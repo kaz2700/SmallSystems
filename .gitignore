@@ -1,0 +1,7 @@
+.direnv/
+.envrc
+a.out
+*.o
+*.out
+result
+result*
