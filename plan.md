@@ -25,27 +25,27 @@
 ## Fase 2: Parte Práctica - Programa v1 (Microcanónica)
 
 ### 2.1 Estructura básica
-- [ ] Crear programa con arrays vx(N), vy(N), vz(N) para N≤32 partículas
-- [ ] Inicializar velocidades con igual módulo y dirección aleatoria
-- [ ] Imponer momento total cero: restar velocidad del centro de masas
+- [x] Crear programa con arrays vx(N), vy(N), vz(N) para N≤32 partículas
+- [x] Inicializar velocidades con igual módulo y dirección aleatoria
+- [x] Imponer momento total cero: restar velocidad del centro de masas
 
 ### 2.2 Control térmico
-- [ ] Escalar velocidades para fijar temperatura: v_i' = v_i √(T_deseada/T_actual)
+- [x] Escalar velocidades para fijar temperatura: v_i' = v_i √(T_deseada/T_actual)
 
 ### 2.3 Colisiones partículas-partícula
-- [ ] Seleccionar pares de partículas aleatoriamente
-- [ ] Implementar colisión elástica 2D/3D
-- [ ] Actualizar velocidades de ambas partículas
+- [x] Seleccionar pares de partículas aleatoriamente
+- [x] Implementar colisión elástica 2D/3D
+- [x] Actualizar velocidades de ambas partículas
 
-### 2.4 Colisiones partículas-pared
-- [ ] Cada N colisiones, seleccionar N partículas
-- [ ] Con probabilidad p, invertir una componente de velocidad
-- [ ] Modelar pared que refleja
+### 2.4 Condiciones de contorno periódicas
+- [x] Reemplazar colisiones con pared por PBC
+- [x] Cuando partícula sale por un lado, entra por el opuesto
+- [x] Mantener conservación exacta del momento total
 
 ### 2.5 Muestreo y análisis
-- [ ] Después de ~10 colisiones/partícula, muestrear distribución
-- [ ] Repetir muestreo acumulativamente
-- [ ] Generar histograma y comparar con Maxwell-Boltzmann teórica
+- [x] Después de ~10 colisiones/partícula, muestrear distribución
+- [x] Repetir muestreo acumulativamente
+- [x] Generar histograma y comparar con Maxwell-Boltzmann teórica
 
 ---
 
