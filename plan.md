@@ -52,14 +52,14 @@
 ## Fase 3: Parte Práctica - Programa v2 (Dinámica Molecular)
 
 ### 3.1 Adaptación del programa v1
-- [ ] Copiar programa v1
-- [ ] Eliminar colisiones con paredes
-- [ ] Mantener solo colisiones elásticas entre partículas
+- [x] Copiar programa v1
+- [x] Eliminar colisiones con paredes
+- [x] Mantener solo colisiones elásticas entre partículas
 
 ### 3.2 Verificación
-- [ ] Verificar conservación de momento total
-- [ ] Verificar conservación de energía
-- [ ] Comparar distribución de velocidades con teoría microcanónica
+- [x] Verificar conservación de momento total
+- [x] Verificar conservación de energía
+- [x] Comparar distribución de velocidades con teoría microcanónica
 
 ---
 
