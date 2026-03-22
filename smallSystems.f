@@ -2,8 +2,8 @@
       IMPLICIT NONE
 
       INTEGER, PARAMETER :: NMAX = 2000
-      INTEGER :: N, i, icoll, ncolisiones
-      INTEGER :: i1, i2
+      INTEGER :: N, i, icoll, ncolisiones, icuantas
+      INTEGER :: i1, i2, iwall, pared
 
 !  DECLARACION DE VARIABLES
       
@@ -34,11 +34,14 @@
       REAL :: v2x, v2y, v2z   ! Velocidad de particula 2 antes de colision
       REAL :: prod_escalar     ! Producto escalar (v1-v2)·n
 
-!  SECCION 2.1
+!  Variables para colisiones con pared
+      REAL :: probabilidad     ! Probabilidad de colision con pared
 
-      N = 1000                ! Numero de particulas
+      N = 20                 ! Numero de particulas
       v_modulo = 1.0         ! Velocidad inicial (magnitud)
-      ncolisiones = 10   ! Numero de colisiones a simular
+      ncolisiones = 200      ! Numero de colisiones a simular (10 por particula)
+      icuantas = N           ! Cada N colisiones particula-particula, colisiones con pared
+      probabilidad = 0.5    ! Probabilidad de colision con pared por particula
       L = 10.0               ! Tamano de la caja
 
       DO i = 1, N
@@ -115,12 +118,10 @@
       WRITE(*,*) 'Temperatura despues de escalar:', T_actual
       WRITE(*,*) 'Energia cinetica inicial:', E_inicial
 
-!  SECCION 2.3
-!  Despues de suficientes colisiones, el sistema alcanza equilibrio
-!  termico y la distribucion de velocidades es Maxwell-Boltzmann.
+!  Despues de suficientes colisiones, el sistema alcanza equilibrio termico y la distribucion de velocidades es Maxwell-Boltzmann.
 
 !  Algoritmo de colision elastica para masas iguales:
-!  1. Seleccionar dos particulas al azar
+!  1. Seleccionar dos particulas random
 !  2. Generar un eje de colision aleatorio (vector unitario n)
 !  3. Calcular el producto escalar (v1-v2)·n
 !  4. Actualizar velocidades:
@@ -129,97 +130,96 @@
 
       WRITE(*,*)
       WRITE(*,*) 'SIMULANDO COLISIONES'
-      WRITE(*,*) 'Numero de colisiones:', ncolisiones
+      WRITE(*,*) 'Numero de colisiones particula-particula:', ncolisiones
+      WRITE(*,*) 'Colisiones con pared cada:', icuantas
 
       DO icoll = 1, ncolisiones
 
+!  Colision particula-particula
 !  Seleccionar dos particulas distintas
+          i1 = INT(N * RAND()) + 1
+          i2 = INT(N * RAND()) + 1
+          DO WHILE (i2 == i1)
+             i2 = INT(N * RAND()) + 1
+          END DO
 
-         i1 = INT(N * RAND()) + 1
-         i2 = INT(N * RAND()) + 1
-         DO WHILE (i2 == i1)
-            i2 = INT(N * RAND()) + 1
-         END DO
+!  Generar eje de colision aleatorio
+          aleatorio = RAND()
+          theta = ACOS(2.0 * aleatorio - 1.0)
+          aleatorio = RAND()
+          phi = 2.0 * 3.141592653589793 * aleatorio
+          nx = SIN(theta) * COS(phi)
+          ny = SIN(theta) * SIN(phi)
+          nz = COS(theta)
 
-!        --- Generar eje de colision aleatorio ---
-!        Usamos el mismo metodo que para velocidad inicial
-         aleatorio = RAND()
-         theta = ACOS(2.0 * aleatorio - 1.0)
-         aleatorio = RAND()
-         phi = 2.0 * 3.141592653589793 * aleatorio
-         nx = SIN(theta) * COS(phi)
-         ny = SIN(theta) * SIN(phi)
-         nz = COS(theta)
+!  Guardar velocidades antes de la colision
+          v1x = vx(i1)
+          v1y = vy(i1)
+          v1z = vz(i1)
+          v2x = vx(i2)
+          v2y = vy(i2)
+          v2z = vz(i2)
 
-!        --- Guardar velocidades antes de la colision ---
-         v1x = vx(i1)
-         v1y = vy(i1)
-         v1z = vz(i1)
-         v2x = vx(i2)
-         v2y = vy(i2)
-         v2z = vz(i2)
+!  Aplicar formula de colision elastica
+          prod_escalar = (v1x - v2x) * nx + (v1y - v2y) * ny + (v1z - v2z) * nz
 
-!        --- Aplicar formula de colision elastica ---
-         prod_escalar = (v1x - v2x) * nx + (v1y - v2y) * ny + (v1z - v2z) * nz
+          vx(i1) = v1x - prod_escalar * nx
+          vy(i1) = v1y - prod_escalar * ny
+          vz(i1) = v1z - prod_escalar * nz
 
-         vx(i1) = v1x - prod_escalar * nx
-         vy(i1) = v1y - prod_escalar * ny
-         vz(i1) = v1z - prod_escalar * nz
+          vx(i2) = v2x + prod_escalar * nx
+          vy(i2) = v2y + prod_escalar * ny
+          vz(i2) = v2z + prod_escalar * nz
 
-         vx(i2) = v2x + prod_escalar * nx
-         vy(i2) = v2y + prod_escalar * ny
-         vz(i2) = v2z + prod_escalar * nz
-      END DO
+!  Colisiones con pared: cada icuantas colisiones, seleccionar N particulas
+!  y cada una tiene probabilidad de colisionar con una pared
+          IF (MOD(icoll, icuantas) == 0) THEN
+             DO iwall = 1, N
+                aleatorio = RAND()
+                IF (aleatorio < probabilidad) THEN
+                   i1 = INT(N * RAND()) + 1
+                   pared = INT(6.0 * RAND()) + 1
+                   IF (pared == 1) vx(i1) = -vx(i1)
+                   IF (pared == 2) vx(i1) = -vx(i1)
+                   IF (pared == 3) vy(i1) = -vy(i1)
+                   IF (pared == 4) vy(i1) = -vy(i1)
+                   IF (pared == 5) vz(i1) = -vz(i1)
+                   IF (pared == 6) vz(i1) = -vz(i1)
+                END IF
+             END DO
+          END IF
 
-      WRITE(*,*) 'Colisiones completadas'
+       END DO
 
-!  SECCION 2.4
+       WRITE(*,*) 'Colisiones completadas'
 
 !  Las condiciones de contorno periodicas simulan un sistema infinito. Si una particula cruza un borde, aparece por el opuesto.
 
       WRITE(*,*)
-      WRITE(*,*) 'APLICANDO CONDICIONES DE CONTORNO PERIODICAS'
+      WRITE(*,*) 'ACTUALIZANDO POSICIONES'
 
-!  Actualizar posiciones: x = x + v * dt (aquí dt = 1)
       DO i = 1, N
          x(i) = x(i) + vx(i)
          y(i) = y(i) + vy(i)
          z(i) = z(i) + vz(i)
       END DO
 
-!  Aplicar condiciones en cada direccion
-      DO i = 1, N
-         IF (x(i) > L) x(i) = x(i) - L
-         IF (x(i) < 0.0) x(i) = x(i) + L
-
-         IF (y(i) > L) y(i) = y(i) - L
-         IF (y(i) < 0.0) y(i) = y(i) + L
-
-         IF (z(i) > L) z(i) = z(i) - L
-         IF (z(i) < 0.0) z(i) = z(i) + L
-      END DO
-
-      WRITE(*,*) 'Posiciones actualizadas con condiciones de contorno periodicas'
-
-!  SECCION 2.5: VERIFICACION Y GUARDADO DE DATOS
+      WRITE(*,*) 'Posiciones actualizadas'
 
 !  Verificamos que las cantidades fisicas se conservan correctamente.
 !  Guardamos los datos para analisis posterior (histogramas, etc.)
-!======================================================================
 
       WRITE(*,*)
-      WRITE(*,*) '=== VERIFICACION FINAL ==='
+      WRITE(*,*) 'VERIFICACION RESULTADOS'
 
-!  --- Verificar conservacion del momento total ---
-!  Debe ser aproximadamente cero (error de precision numerica)
+!  Verificar conservacion del momento total (tiene que ser 0 aprox)
       Px = SUM(vx(1:N))
       Py = SUM(vy(1:N))
       Pz = SUM(vz(1:N))
       WRITE(*,*) 'Momento total final:'
       WRITE(*,*) 'Px =', Px, '  Py =', Py, '  Pz =', Pz
 
-!  --- Verificar conservacion de energia ---
-!  La energia debe mantenerse constante (a menos por errores numericos)
+!   Verificamos conservacion de energia 
       suma_v2 = SUM(vx(1:N)**2 + vy(1:N)**2 + vz(1:N)**2)
       T_actual = suma_v2 / (3.0 * REAL(N))
       E_total = 0.5 * suma_v2
@@ -227,9 +227,9 @@
       WRITE(*,*)
       WRITE(*,*) 'Temperatura final:', T_actual
       WRITE(*,*) 'Energia cinetica final:', E_total
-      WRITE(*,*) 'Diferencia energia (inicial - final):', ABS(E_total - E_inicial)
+      WRITE(*,*) 'Diferencia energias final e inicial:', ABS(E_total - E_inicial)
 
-!  --- Guardar datos para analisis ---
+!  Guardar datos
       OPEN(10, FILE='data/velocidades_final.dat', STATUS='REPLACE')
       DO i = 1, N
          WRITE(10,*) vx(i), vy(i), vz(i)
