@@ -54,15 +54,30 @@ C     Variables auxiliares
       REAL counts(100)
       REAL bin_width, bin_center
       INTEGER nbins, ibin
+      INTEGER nsamples, isample
+      PARAMETER (nsamples = 50000)
 C
 C     Condiciones iniciales
 C
-      N = 20                 ! Numero de particulas
+      N = 3                  ! Numero de particulas
       v_modulo = 1.0         ! Velocidad inicial (magnitud)
-      ncolisiones = 200      ! Numero de colisiones a simular (10 por particula)
+      ncolisiones = 30       ! 10 colisiones por particula
       icuantas = N           ! Cada N colisiones particula-particula, colisiones con pared
-      probabilidad = 0.5    ! Probabilidad de colision con pared por particula
+      probabilidad = 0.5     ! Probabilidad de colision con pared por particula
       L = 10.0               ! Tamano de la caja
+      nbins = 100
+      T_deseada = 1.5
+
+      v_modulo = SQRT(8.0 * T_deseada / 3.141592653589793)
+      v_max = v_modulo * 3.0
+      bin_width = v_max / REAL(nbins)
+
+      DO mm = 1, nbins
+         counts(mm) = 0.0
+      END DO
+      isample = 0
+
+      DO 9999 irun = 1, 50000
 C
 C     Inicializar posiciones aleatoriamente en la caja
 C
@@ -118,10 +133,6 @@ C
   500 CONTINUE
       T_actual = suma_v2 / REAL(N) / 3.0
 C
-      WRITE(*,*)
-      WRITE(*,*) 'Temperatura actual (antes de escalar):', T_actual
-      WRITE(*,*) 'Temperatura deseada:', T_deseada
-C
       DO 600 ii = 1, N
          vx(ii) = vx(ii) * SQRT(T_deseada / T_actual)
          vy(ii) = vy(ii) * SQRT(T_deseada / T_actual)
@@ -137,18 +148,9 @@ C
       T_actual = suma_v2 / (3.0 * REAL(N))
       E_inicial = 0.5 * suma_v2
 C
-      WRITE(*,*)
-      WRITE(*,*) 'Temperatura despues de escalar:', T_actual
-      WRITE(*,*) 'Energia cinetica inicial:', E_inicial
-C
 C     Bucle de colisiones
-C
-      WRITE(*,*)
-      WRITE(*,*) 'SIMULANDO COLISIONES'
-      WRITE(*,*) 'Numero de colisiones particula-particula:', ncolisiones
-      WRITE(*,*) 'Colisiones con pared cada:', icuantas
-C
-      DO 1000 icoll = 1, ncolisiones
+
+      DO icoll = 1, ncolisiones
 C
 C     Colision particula-particula
 C     Seleccionar dos particulas distintas
@@ -205,110 +207,45 @@ C
                   IF (pared .EQ. 3) vy(i1) = -vy(i1)
                   IF (pared .EQ. 4) vy(i1) = -vy(i1)
                   IF (pared .EQ. 5) vz(i1) = -vz(i1)
-                  IF (pared .EQ. 6) vz(i1) = -vz(i1)
-               END IF
+                   IF (pared .EQ. 6) vz(i1) = -vz(i1)
+                END IF
   900       CONTINUE
-         END IF
-C
- 1000 CONTINUE
-C
-      WRITE(*,*) 'Colisiones completadas'
-C
-C     Actualizar posiciones
-C
-      WRITE(*,*)
-      WRITE(*,*) 'ACTUALIZANDO POSICIONES'
-C
-      DO 2000 ii = 1, N
-         x(ii) = x(ii) + vx(ii)
-         y(ii) = y(ii) + vy(ii)
-         z(ii) = z(ii) + vz(ii)
- 2000 CONTINUE
-C
-      WRITE(*,*) 'Posiciones actualizadas'
-C
-C     Verificar resultados
-C
-      WRITE(*,*)
-      WRITE(*,*) 'VERIFICACION RESULTADOS'
-C
-      Px = 0.0
-      Py = 0.0
-      Pz = 0.0
-      DO 3000 ii = 1, N
-         Px = Px + vx(ii)
-         Py = Py + vy(ii)
-         Pz = Pz + vz(ii)
- 3000 CONTINUE
-      WRITE(*,*) 'Momento total final:'
-      WRITE(*,*) 'Px =', Px, '  Py =', Py, '  Pz =', Pz
-C
-C     Verificar conservacion de energia
-C
-      suma_v2 = 0.0
-      DO 4000 ii = 1, N
-         suma_v2 = suma_v2 + vx(ii)**2 + vy(ii)**2 + vz(ii)**2
- 4000 CONTINUE
-      T_actual = suma_v2 / (3.0 * REAL(N))
-      E_total = 0.5 * suma_v2
-C
-      WRITE(*,*)
-      WRITE(*,*) 'Temperatura final:', T_actual
-      WRITE(*,*) 'Energia cinetica final:', E_total
-C
-C     Valor absoluto manual (compatible con Fortran 77)
-C
+          END IF
+
+           DO ll = 1, N
+              v_modulo = SQRT(vx(ll)**2 + vy(ll)**2 + vz(ll)**2)
+              ibin = INT(v_modulo / bin_width) + 1
+              IF (ibin .GT. nbins) ibin = nbins
+              IF (ibin .LT. 1) ibin = 1
+              counts(ibin) = counts(ibin) + 1.0
+           END DO
+           isample = isample + 1
+
+      END DO
       diff = E_total - E_inicial
       IF (diff .LT. 0.0) THEN
          diff = -diff
       END IF
-      WRITE(*,*) 'Diferencia energias final e inicial:', diff
+ 9999 CONTINUE
+
       WRITE(*,*)
-      WRITE(*,*) 'Generando histograma...'
-C
-C     Calcular velocidad maxima y ancho de bins
-C
-      v_modulo = SQRT(8.0 * T_deseada / 3.141592653589793)
-      v_max = 0.0
-      DO 7100 ii = 1, N
-         v_modulo = SQRT(vx(ii)**2 + vy(ii)**2 + vz(ii)**2)
-         IF (v_modulo .GT. v_max) v_max = v_modulo
- 7100 CONTINUE
-      v_max = v_max * 1.2
-      nbins = 30
-      bin_width = v_max / REAL(nbins)
-C
-C     Inicializar contadores de bins a cero
-C
-      DO 7200 ii = 1, nbins
-         counts(ii) = 0.0
- 7200 CONTINUE
-C
-C     Contar particulas en cada bin
-C
-      DO 7300 ii = 1, N
-         v_modulo = SQRT(vx(ii)**2 + vy(ii)**2 + vz(ii)**2)
-         ibin = INT(v_modulo / bin_width) + 1
-         IF (ibin .GT. nbins) ibin = nbins
-         IF (ibin .LT. 1) ibin = 1
-         counts(ibin) = counts(ibin) + 1.0
- 7300 CONTINUE
-C
+      WRITE(*,*) 'Muestras acumuladas:', isample
+
 C     Normalizar histograma
-C
-      DO 7400 ii = 1, nbins
-         counts(ii) = counts(ii) / (REAL(N) * bin_width)
- 7400 CONTINUE
-C
+
+      DO mm = 1, nbins
+         counts(mm) = counts(mm) / (REAL(isample) * bin_width)
+      END DO
+
 C     Escribir histograma a archivo
-C
+
       OPEN(10, FILE='data/histograma.dat', STATUS='UNKNOWN')
-      DO 7500 ii = 1, nbins
-         bin_center = (REAL(ii) - 0.5) * bin_width
-         WRITE(10,8010) bin_center, counts(ii)
- 7500 CONTINUE
+      DO nn = 1, nbins
+         bin_center = (REAL(nn) - 0.5) * bin_width
+         WRITE(10,9000) bin_center, counts(nn)
+      END DO
       CLOSE(10)
- 8010 FORMAT(F7.4, 1X, F10.6)
+ 9000 FORMAT(F7.4, 1X, F10.6)
 
       WRITE(*,*)
       WRITE(*,*) 'Generado: data/histograma.dat'
