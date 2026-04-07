@@ -47,11 +47,15 @@ C
 C     Variables para colisiones con pared
       REAL probabilidad     ! Probabilidad de colision con pared
 C
-C     Auxiliary variables
+C     Variables auxiliares
       REAL dx, dy, dz
       REAL diff
+      REAL v_max
+      REAL counts(100)
+      REAL bin_width, bin_center
+      INTEGER nbins, ibin
 C
-C     Initial conditions
+C     Condiciones iniciales
 C
       N = 20                 ! Numero de particulas
       v_modulo = 1.0         ! Velocidad inicial (magnitud)
@@ -60,7 +64,7 @@ C
       probabilidad = 0.5    ! Probabilidad de colision con pared por particula
       L = 10.0               ! Tamano de la caja
 C
-C     Initialize positions randomly in box
+C     Inicializar posiciones aleatoriamente en la caja
 C
       DO 100 ii = 1, N
          x(ii) = L * RAND()
@@ -68,9 +72,9 @@ C
          z(ii) = L * RAND()
   100 CONTINUE
 C
-C     For a uniform distribution on the unit sphere, we use:
-C     - theta = arccos(2*u - 1) with u~U(0,1)  -> uniform distribution in [0, pi]
-C     - phi = 2*pi*u with u~U(0,1)             -> uniform distribution in [0, 2pi]
+C     Para una distribucion uniforme sobre la esfera unitaria, usamos:
+C     - theta = arccos(2*u - 1) con u~U(0,1)  -> distribucion uniforme en [0, pi]
+C     - phi = 2*pi*u con u~U(0,1)             -> distribucion uniforme en [0, 2pi]
 C
       DO 200 ii = 1, N
          aleatorio = RAND()
@@ -83,9 +87,9 @@ C
          vz(ii) = v_modulo * COS(theta)
   200 CONTINUE
 C
-C     In the microcanonical ensemble, the total momentum must be zero.
+C     En el ensemble microcanonico, el momento total debe ser cero.
 C     v_i' = v_i - V_cm
-C     where V_cm = (1/N) * sum(v_i)
+C     donde V_cm = (1/N) * sum(v_i)
 C
       vcm_x = 0.0
       vcm_y = 0.0
@@ -105,7 +109,7 @@ C
          vz(ii) = vz(ii) - vcm_z
   400 CONTINUE
 C
-C     Temperature scaling (T = <v^2> / 3)
+C     Escalado de temperatura (T = <v^2> / 3)
 C
       T_deseada = 1.5
       suma_v2 = 0.0
@@ -124,7 +128,7 @@ C
          vz(ii) = vz(ii) * SQRT(T_deseada / T_actual)
   600 CONTINUE
 C
-C     Verify initial energy
+C     Verificar energia inicial
 C
       suma_v2 = 0.0
       DO 700 ii = 1, N
@@ -137,7 +141,7 @@ C
       WRITE(*,*) 'Temperatura despues de escalar:', T_actual
       WRITE(*,*) 'Energia cinetica inicial:', E_inicial
 C
-C     Collision loop
+C     Bucle de colisiones
 C
       WRITE(*,*)
       WRITE(*,*) 'SIMULANDO COLISIONES'
@@ -146,14 +150,14 @@ C
 C
       DO 1000 icoll = 1, ncolisiones
 C
-C     Particle-particle collision
-C     Select two distinct particles
+C     Colision particula-particula
+C     Seleccionar dos particulas distintas
 C
   110    i1 = INT(N * RAND()) + 1
   120    i2 = INT(N * RAND()) + 1
          IF (i2 .EQ. i1) GO TO 120
 C
-C     Generate random collision axis
+C     Generar eje de colision aleatorio
 C
          aleatorio = RAND()
          theta = ACOS(2.0 * aleatorio - 1.0)
@@ -163,7 +167,7 @@ C
          ny = SIN(theta) * SIN(phi)
          nz = COS(theta)
 C
-C     Save velocities before collision
+C     Guardar velocidades antes de la colision
 C
          v1x = vx(i1)
          v1y = vy(i1)
@@ -172,7 +176,7 @@ C
          v2y = vy(i2)
          v2z = vz(i2)
 C
-C     Apply elastic collision formula (split for Fortran 77)
+C     Aplicar formula de colision elastica (dividida para Fortran 77)
 C
          dx = v1x - v2x
          dy = v1y - v2y
@@ -187,8 +191,8 @@ C
          vy(i2) = v2y + prod_escalar * ny
          vz(i2) = v2z + prod_escalar * nz
 C
-C     Wall collisions: every icuantas collisions, select N particles
-C     and each has probability of colliding with a wall
+C     Colisiones con pared: cada icuantas colisiones, seleccionar N particulas
+C     y cada una tiene probabilidad de chocar con una pared
 C
          IF (MOD(icoll, icuantas) .EQ. 0) THEN
             DO 900 iwall = 1, N
@@ -210,7 +214,7 @@ C
 C
       WRITE(*,*) 'Colisiones completadas'
 C
-C     Update positions
+C     Actualizar posiciones
 C
       WRITE(*,*)
       WRITE(*,*) 'ACTUALIZANDO POSICIONES'
@@ -223,7 +227,7 @@ C
 C
       WRITE(*,*) 'Posiciones actualizadas'
 C
-C     Verify results
+C     Verificar resultados
 C
       WRITE(*,*)
       WRITE(*,*) 'VERIFICACION RESULTADOS'
@@ -239,7 +243,7 @@ C
       WRITE(*,*) 'Momento total final:'
       WRITE(*,*) 'Px =', Px, '  Py =', Py, '  Pz =', Pz
 C
-C     Verify energy conservation
+C     Verificar conservacion de energia
 C
       suma_v2 = 0.0
       DO 4000 ii = 1, N
@@ -252,38 +256,61 @@ C
       WRITE(*,*) 'Temperatura final:', T_actual
       WRITE(*,*) 'Energia cinetica final:', E_total
 C
-C     Manual absolute value (Fortran 77 compatible)
+C     Valor absoluto manual (compatible con Fortran 77)
 C
       diff = E_total - E_inicial
       IF (diff .LT. 0.0) THEN
          diff = -diff
       END IF
       WRITE(*,*) 'Diferencia energias final e inicial:', diff
-C
-C     Output data files
-C
-      OPEN(10, FILE='data/velocidades_final.dat', STATUS='UNKNOWN')
-      DO 5000 ii = 1, N
-         WRITE(10,*) vx(ii), vy(ii), vz(ii)
- 5000 CONTINUE
-      CLOSE(10)
-C
-      OPEN(10, FILE='data/modulos_final.dat', STATUS='UNKNOWN')
-      DO 6000 ii = 1, N
-         WRITE(10,*) SQRT(vx(ii)**2 + vy(ii)**2 + vz(ii)**2)
- 6000 CONTINUE
-      CLOSE(10)
-C
-      OPEN(10, FILE='data/posiciones_final.dat', STATUS='UNKNOWN')
-      DO 7000 ii = 1, N
-         WRITE(10,*) x(ii), y(ii), z(ii)
- 7000 CONTINUE
-      CLOSE(10)
-C
       WRITE(*,*)
-      WRITE(*,*) 'Archivos de datos generados:'
-      WRITE(*,*) '  - data/velocidades_final.dat (vx, vy, vz por linea)'
-      WRITE(*,*) '  - data/modulos_final.dat (|v| por linea)'
-      WRITE(*,*) '  - data/posiciones_final.dat (x, y, z por linea)'
+      WRITE(*,*) 'Generando histograma...'
 C
+C     Calcular velocidad maxima y ancho de bins
+C
+      v_modulo = SQRT(8.0 * T_deseada / 3.141592653589793)
+      v_max = 0.0
+      DO 7100 ii = 1, N
+         v_modulo = SQRT(vx(ii)**2 + vy(ii)**2 + vz(ii)**2)
+         IF (v_modulo .GT. v_max) v_max = v_modulo
+ 7100 CONTINUE
+      v_max = v_max * 1.2
+      nbins = 30
+      bin_width = v_max / REAL(nbins)
+C
+C     Inicializar contadores de bins a cero
+C
+      DO 7200 ii = 1, nbins
+         counts(ii) = 0.0
+ 7200 CONTINUE
+C
+C     Contar particulas en cada bin
+C
+      DO 7300 ii = 1, N
+         v_modulo = SQRT(vx(ii)**2 + vy(ii)**2 + vz(ii)**2)
+         ibin = INT(v_modulo / bin_width) + 1
+         IF (ibin .GT. nbins) ibin = nbins
+         IF (ibin .LT. 1) ibin = 1
+         counts(ibin) = counts(ibin) + 1.0
+ 7300 CONTINUE
+C
+C     Normalizar histograma
+C
+      DO 7400 ii = 1, nbins
+         counts(ii) = counts(ii) / (REAL(N) * bin_width)
+ 7400 CONTINUE
+C
+C     Escribir histograma a archivo
+C
+      OPEN(10, FILE='data/histograma.dat', STATUS='UNKNOWN')
+      DO 7500 ii = 1, nbins
+         bin_center = (REAL(ii) - 0.5) * bin_width
+         WRITE(10,8010) bin_center, counts(ii)
+ 7500 CONTINUE
+      CLOSE(10)
+ 8010 FORMAT(F7.4, 1X, F10.6)
+
+      WRITE(*,*)
+      WRITE(*,*) 'Generado: data/histograma.dat'
+
       END
